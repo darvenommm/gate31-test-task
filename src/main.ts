@@ -1,6 +1,8 @@
 import { defineFilter, FilterForm, FILTER_NAME, FILTER_FORM_ATTRIBUTES } from './components/filter';
 import { defineCards, Cards, CARDS_NAME, CARDS_ATTRIBUTES } from './components/cards';
 
+import './styles.scss';
+
 const main = (): void => {
   defineFilter();
   defineCards();
@@ -13,6 +15,8 @@ const main = (): void => {
     throw Error('Not found filterForm or cards or output element in th page');
   }
 
+  output.textContent = 'Active count: None';
+
   filterForm.setAttribute(FILTER_FORM_ATTRIBUTES.disabled, 'true');
   filterForm.filterCallback = (newFilter: string): void =>
     void cards.setAttribute(CARDS_ATTRIBUTES.filter, newFilter);
@@ -21,7 +25,8 @@ const main = (): void => {
   cards.loadedCallback = (): void => {
     filterForm.setAttribute(FILTER_FORM_ATTRIBUTES.disabled, 'false');
   };
-  cards.renderCallback = (): void => void (output.textContent = String(cards.activeCardsCount));
+  cards.renderCallback = (): void =>
+    void (output.textContent = `Active count: ${String(cards.activeCardsCount)}`);
 
   window.removeEventListener('DOMContentLoaded', main);
 };

@@ -37,6 +37,7 @@ export class FilterForm extends HTMLElement {
 
   private render(): void {
     const form = document.createElement('form');
+    form.classList.add('filter-form');
     form.addEventListener('submit', (event): void => {
       event.preventDefault();
       const target = event.target as HTMLFormElement;

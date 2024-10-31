@@ -1,0 +1,72 @@
+body {
+  color: #000000;
+
+  margin: 0;
+}
+
+button,
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
+  box-sizing: border-box;
+
+  @media (max-width: 992px) {
+    max-width: 720px;
+  }
+
+  @media (max-width: 576px) {
+    max-width: 100%;
+    padding: 0 10px;
+  }
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.filter-form {
+  display: flex;
+  gap: 20px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 300px);
+  gap: 30px;
+
+  list-style: none;
+
+  margin: 0;
+  padding: 0;
+}
+
+.card {
+  border: 2px solid black;
+  border-radius: 15px;
+
+  padding: 10px 20px;
+
+  &--active {
+    color: #ffffff;
+
+    background-color: #3a3a3a;
+  }
+}
+
+.card__title {
+  overflow-x: hidden;
+  text-wrap: nowrap;
+  text-overflow: ellipsis;
+}

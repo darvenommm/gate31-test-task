@@ -168,10 +168,14 @@ export class Cards extends HTMLElement {
     try {
       this.renderByCallback((): HTMLElement => {
         const container = document.createElement('ul');
+        container.classList.add('cards');
         const elements = filteredCards.map((card): HTMLElement => {
           const element = document.createElement('li');
+          element.classList.add('card');
+          card.isActive ? element.classList.add('card--active') : null;
 
           const title = document.createElement('h2');
+          title.classList.add('card__title');
           title.textContent = card.title;
 
           const body = document.createElement('p');
