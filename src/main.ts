@@ -1,9 +1,27 @@
-import { defineCards } from './components/cards';
-import { defineCard } from './components/card';
+import { defineFilter, FilterForm, FILTER_NAME, FILTER_FORM_ATTRIBUTES } from './components/filter';
+import { defineCards, Cards, CARDS_NAME, CARDS_ATTRIBUTES } from './components/cards';
 
 const main = (): void => {
-  defineCard();
+  defineFilter();
   defineCards();
+
+  const filterForm = document.querySelector<FilterForm>(FILTER_NAME);
+  const cards = document.querySelector<Cards>(CARDS_NAME);
+  const output = document.querySelector<HTMLOutputElement>('output');
+
+  if (!filterForm || !cards || !output) {
+    throw Error('Not found filterForm or cards or output element in th page');
+  }
+
+  filterForm.setAttribute(FILTER_FORM_ATTRIBUTES.disabled, 'true');
+  filterForm.filterCallback = (newFilter: string): void =>
+    void cards.setAttribute(CARDS_ATTRIBUTES.filter, newFilter);
+
+  cards.setAttribute(CARDS_ATTRIBUTES.filter, filterForm.filter);
+  cards.loadedCallback = (): void => {
+    filterForm.setAttribute(FILTER_FORM_ATTRIBUTES.disabled, 'false');
+  };
+  cards.renderCallback = (): void => void (output.textContent = String(cards.activeCardsCount));
 
   window.removeEventListener('DOMContentLoaded', main);
 };

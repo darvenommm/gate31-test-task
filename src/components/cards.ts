@@ -1,12 +1,6 @@
-import { CARD_NAME, CardAttributes } from './card';
-
 import type { ICard } from '../types';
 
-export const CardsAttributes = {
-  filter: 'filter',
-} as const;
-
-export const CARDS_NAME = 'custom-cards';
+export const CARDS_NAME = 'cards-list';
 
 export const defineCards = (): void => {
   if (!customElements.get(CARDS_NAME)) {
@@ -14,35 +8,88 @@ export const defineCards = (): void => {
   }
 };
 
-const enum CardsState {
-  LOADING,
-  ERROR,
-  SUCCESS,
+const enum CARDS_STATE {
+  LOADING = 'LOADING',
+  ERROR = 'ERROR',
+  SUCCESS = 'SUCCESS',
 }
 
-class Cards extends HTMLElement {
-  public static readonly observedAttributes = [CardsAttributes.filter];
+export const CARDS_ATTRIBUTES = { filter: 'filter' } as const;
+
+type Card = ICard & { isActive: boolean };
+
+export class Cards extends HTMLElement {
+  public static readonly observedAttributes = [CARDS_ATTRIBUTES.filter];
+
+  public loadedCallback: (() => void) | null = null;
+  public renderCallback: (() => void) | null = null;
 
   private readonly CARDS_URL = 'https://jsonplaceholder.typicode.com/posts/?_start=0&_limit=7';
-  private currentState = CardsState.LOADING;
-  private cards: ICard[] = [];
+  private currentState = CARDS_STATE.LOADING;
+  private cards: Card[] = [];
   private errorMessage: null | string = null;
 
+  private _filter: string = '';
+  private _cardsCount: number | null = null;
+  private _activeCardsCount: number | null = null;
+
   public connectedCallback(): void {
-    this.setDefaultAttributes();
     this.loadCards();
+
     this.render();
   }
 
-  public attributeChangedCallback(): void {
-    this.render();
+  public attributeChangedCallback(name: string, oldValue: string, newValue: string): void {
+    console.log('Cards attributes change');
+
+    if (name === CARDS_ATTRIBUTES.filter && oldValue !== newValue) {
+      this.filter = newValue;
+    }
+
+    if (this.currentState === CARDS_STATE.SUCCESS) {
+      this.render();
+    }
+  }
+
+  public get filter(): string {
+    return this._filter;
+  }
+
+  private set filter(newFilter: string) {
+    this._filter = newFilter;
+  }
+
+  public get cardsCount(): number | null {
+    return this._cardsCount;
+  }
+
+  private set cardsCount(newCardsCount: number) {
+    if (newCardsCount < 0) {
+      throw Error('Incorrect cardsCount value');
+    }
+
+    this._cardsCount = newCardsCount;
+  }
+
+  public get activeCardsCount(): number | null {
+    return this._activeCardsCount;
+  }
+
+  private set activeCardsCount(newActiveCardsCount: number) {
+    if (newActiveCardsCount < 0) {
+      throw Error('Incorrect activeCardsCount value');
+    }
+
+    this._activeCardsCount = newActiveCardsCount;
   }
 
   private async loadCards(): Promise<void> {
     try {
       const response = await fetch(this.CARDS_URL);
-      this.cards = (await response.json()) as ICard[];
-      this.currentState = CardsState.SUCCESS;
+      const responseCards: ICard[] = await response.json();
+      this.cards = responseCards.map((card): Card => ({ ...card, isActive: false }));
+      this.currentState = CARDS_STATE.SUCCESS;
+      this.loadedCallback?.();
     } catch (error) {
       console.error(error);
 
@@ -50,7 +97,7 @@ class Cards extends HTMLElement {
         this.errorMessage = error.message;
       }
 
-      this.currentState = CardsState.ERROR;
+      this.currentState = CARDS_STATE.ERROR;
     }
 
     this.render();
@@ -58,56 +105,100 @@ class Cards extends HTMLElement {
 
   private render(): void {
     switch (this.currentState) {
-      case CardsState.LOADING:
+      case CARDS_STATE.LOADING:
         return this.renderLoader();
 
-      case CardsState.ERROR:
+      case CARDS_STATE.ERROR:
         return this.renderError();
 
-      case CardsState.SUCCESS:
-        return this.renderCards();
+      case CARDS_STATE.SUCCESS:
+        const filteredCards = Boolean(this.filter)
+          ? this.cards.filter((card): boolean => card.title.includes(this.filter!))
+          : this.cards;
+
+        this.cardsCount = filteredCards.length;
+        this.activeCardsCount = filteredCards.reduce(
+          (count, current): number => count + Number(current.isActive),
+          0,
+        );
+
+        if (this.cardsCount) {
+          this.renderFilteredCards(filteredCards);
+        } else {
+          this.renderEmpty();
+        }
+
+        this.renderCallback?.();
+
+        break;
+
+      default:
+        throw Error('Incorrect currentState value');
     }
   }
 
   private renderLoader(): void {
-    this.replaceChildren();
+    this.renderByCallback((): HTMLElement => {
+      const text = document.createElement('p');
+      text.textContent = 'Loading...';
 
-    const text = document.createElement('p');
-    text.textContent = 'Loading...';
-
-    this.append(text);
+      return text;
+    });
   }
 
   private renderError(): void {
-    this.replaceChildren();
+    this.renderByCallback((): HTMLElement => {
+      const text = document.createElement('p');
+      text.textContent = `Error: ${this.errorMessage ?? 'Something went wrong'}`;
 
-    const text = document.createElement('p');
-    text.textContent = `Error: ${this.errorMessage ?? 'Something went wrong'}`;
-
-    this.append(text);
+      return text;
+    });
   }
 
-  private renderCards(): void {
+  private renderEmpty(): void {
+    this.renderByCallback((): HTMLElement => {
+      const text = document.createElement('p');
+      text.textContent = 'There are not cards';
+
+      return text;
+    });
+  }
+
+  private renderFilteredCards(filteredCards: Card[]): void {
     try {
-      this.replaceChildren();
+      this.renderByCallback((): HTMLElement => {
+        const container = document.createElement('ul');
+        const elements = filteredCards.map((card): HTMLElement => {
+          const element = document.createElement('li');
 
-      const filter = this.getAttribute(CardsAttributes.filter) ?? '';
-      const filteredCards = Boolean(filter)
-        ? this.cards.filter((card): boolean => card.title.includes(filter))
-        : this.cards;
+          const title = document.createElement('h2');
+          title.textContent = card.title;
 
-      const container = document.createElement('ul');
-      const elements = filteredCards.map((card): HTMLElement => {
-        const element = document.createElement(CARD_NAME);
-        element.setAttribute(CardAttributes.title, card.title);
-        element.setAttribute(CardAttributes.content, card.body);
+          const body = document.createElement('p');
+          body.textContent = card.body;
 
-        return element;
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = card.isActive;
+          checkbox.addEventListener('change', (event) => {
+            const needCard = this.cards.find((currentCard): boolean => card.id === currentCard.id);
+
+            if (!needCard) return;
+
+            needCard.isActive = (event.target as HTMLInputElement).checked;
+
+            this.render();
+          });
+
+          element.append(title, body, checkbox);
+
+          return element;
+        });
+
+        container.append(...elements);
+
+        return container;
       });
-
-      container.append(...elements);
-
-      this.append(container);
     } catch (error) {
       console.error(error);
 
@@ -115,14 +206,12 @@ class Cards extends HTMLElement {
         this.errorMessage = error.message;
       }
 
-      this.currentState = CardsState.ERROR;
+      this.currentState = CARDS_STATE.ERROR;
       this.render();
     }
   }
 
-  private setDefaultAttributes(): void {
-    if (!this.getAttribute(CardsAttributes.filter)) {
-      this.setAttribute(CardsAttributes.filter, '');
-    }
+  private renderByCallback(callback: () => HTMLElement): void {
+    this.replaceChildren(callback());
   }
 }
